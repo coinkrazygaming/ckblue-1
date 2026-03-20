@@ -57,6 +57,9 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // CoinKrazy brand colors
+        success: "#22c55e",
+        warning: "#f59e0b",
       },
       borderRadius: {
         lg: "var(--radius)",
