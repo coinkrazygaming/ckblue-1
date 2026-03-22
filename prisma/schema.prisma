@@ -1,0 +1,307 @@
+// Prisma schema for CoinKrazy Gaming Platform
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User Authentication & Profile
+model User {
+  id                    String                @id @default(cuid())
+  email                 String                @unique
+  username              String                @unique
+  passwordHash          String
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  lastLoginAt           DateTime?
+  
+  // Relations
+  profile               Profile?
+  wallet                Wallet?
+  gameSessions          GameSession[]
+  achievements          UserAchievement[]
+  challenges            UserChallenge[]
+  communityPosts        CommunityPost[]
+  communityComments     CommunityComment[]
+  vipMembership         VIPMembership?
+  inventory             Inventory[]
+  referredBy            Referral?             @relation("referrer")
+  referrals             Referral[]            @relation("referree")
+  supportTickets        SupportTicket[]
+}
+
+model Profile {
+  id                    String                @id @default(cuid())
+  userId                String                @unique
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  displayName           String
+  avatar                String?
+  bio                   String?
+  country               String?
+  level                 Int                   @default(1)
+  totalWins             Int                   @default(0)
+  totalLosses           Int                   @default(0)
+  totalGamesPlayed      Int                   @default(0)
+  winRate               Float                 @default(0)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+model Wallet {
+  id                    String                @id @default(cuid())
+  userId                String                @unique
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  balance               Float                 @default(1000)
+  totalEarned           Float                 @default(0)
+  totalSpent            Float                 @default(0)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  transactions          WalletTransaction[]
+}
+
+model WalletTransaction {
+  id                    String                @id @default(cuid())
+  walletId              String
+  wallet                Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  
+  amount                Float
+  type                  String                // "deposit", "withdrawal", "game_win", "game_loss", "purchase", "referral"
+  description           String
+  
+  createdAt             DateTime              @default(now())
+}
+
+// Games
+model Game {
+  id                    String                @id @default(cuid())
+  title                 String
+  description           String
+  rules                 String
+  icon                  String
+  thumbnail             String
+  category              String                // "dice", "cards", "slots", "arcade"
+  minBet                Float
+  maxBet                Float
+  houseFee              Float                 @default(0.02)
+  rtp                   Float                 @default(0.97)  // Return to Player percentage
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  sessions              GameSession[]
+}
+
+model GameSession {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId                String
+  game                  Game                  @relation(fields: [gameId], references: [id])
+  
+  betAmount             Float
+  winAmount             Float                 @default(0)
+  profit                Float
+  result                String                // "win", "loss", "tie"
+  gameData              Json?                 // Store game-specific data
+  
+  createdAt             DateTime              @default(now())
+}
+
+// Achievements
+model Achievement {
+  id                    String                @id @default(cuid())
+  title                 String
+  description           String
+  icon                  String
+  badge                 String
+  points                Int
+  rarity                String                // "common", "rare", "epic", "legendary"
+  condition             String                // Description of how to unlock
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  users                 UserAchievement[]
+}
+
+model UserAchievement {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId         String
+  achievement           Achievement           @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  
+  unlockedAt            DateTime              @default(now())
+  
+  @@unique([userId, achievementId])
+}
+
+// Challenges
+model Challenge {
+  id                    String                @id @default(cuid())
+  title                 String
+  description           String
+  icon                  String
+  reward                Float
+  difficulty            String                // "easy", "medium", "hard"
+  duration              Int                   // in hours
+  requirement           String                // e.g., "win_5_games", "earn_500_coins"
+  requirementValue      Int
+  active                Boolean               @default(true)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  users                 UserChallenge[]
+}
+
+model UserChallenge {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId           String
+  challenge             Challenge             @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  
+  progress              Int                   @default(0)
+  completed             Boolean               @default(false)
+  completedAt           DateTime?
+  
+  @@unique([userId, challengeId])
+}
+
+// VIP Club
+model VIPMembership {
+  id                    String                @id @default(cuid())
+  userId                String                @unique
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tier                  String                // "bronze", "silver", "gold", "platinum"
+  joinedAt              DateTime              @default(now())
+  expiresAt             DateTime
+  isActive              Boolean               @default(true)
+  
+  bonusMultiplier       Float
+  monthlyBonus          Float
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+// Store & Inventory
+model StoreItem {
+  id                    String                @id @default(cuid())
+  title                 String
+  description           String
+  icon                  String
+  price                 Float
+  category              String                // "cosmetics", "boosts", "tools"
+  type                  String                // "avatar", "theme", "multiplier_boost"
+  quantity              Int?                  // null for unlimited
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  inventory             Inventory[]
+}
+
+model Inventory {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId                String
+  item                  StoreItem             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  quantity              Int                   @default(1)
+  purchasedAt           DateTime              @default(now())
+  expiresAt             DateTime?
+  
+  @@unique([userId, itemId])
+}
+
+// Community
+model CommunityPost {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title                 String
+  content               String
+  likes                 Int                   @default(0)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  comments              CommunityComment[]
+}
+
+model CommunityComment {
+  id                    String                @id @default(cuid())
+  postId                String
+  post                  CommunityPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content               String
+  likes                 Int                   @default(0)
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+// Referrals
+model Referral {
+  id                    String                @id @default(cuid())
+  referrerId            String                @unique
+  referrer              User                  @relation("referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  refereeId             String
+  referee               User                  @relation("referree", fields: [refereeId], references: [id], onDelete: Cascade)
+  
+  reward                Float                 @default(50)
+  bonusPercentage       Float                 @default(0.10)
+  isActive              Boolean               @default(true)
+  
+  createdAt             DateTime              @default(now())
+  
+  @@unique([referrerId, refereeId])
+}
+
+// Support
+model SupportTicket {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subject               String
+  message               String
+  category              String                // "bug", "suggestion", "payment", "account", "other"
+  status                String                @default("open")  // "open", "in_progress", "resolved"
+  priority              String                @default("normal") // "low", "normal", "high", "urgent"
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+// Leaderboard
+model LeaderboardEntry {
+  id                    String                @id @default(cuid())
+  userId                String                @unique
+  
+  username              String
+  totalWins             Int
+  totalEarnings         Float
+  winRate               Float
+  level                 Int
+  
+  rank                  Int
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
