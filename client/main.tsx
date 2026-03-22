@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Pages
 import Index from "./pages/Index";
 import Games from "./pages/Games";
+import GameDetail from "./pages/GameDetail";
 import Leaderboards from "./pages/Leaderboards";
 import Achievements from "./pages/Achievements";
 import Challenges from "./pages/Challenges";
@@ -34,6 +35,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/games/:gameId" element={<GameDetail />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/challenges" element={<Challenges />} />
